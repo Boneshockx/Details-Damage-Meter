@@ -3420,597 +3420,6 @@ do
 
 end
 
---~inicio ~janela ~window ~nova ~start
-function gump:CriaJanelaPrincipal (ID, instancia, criando)
-
--- main frames -----------------------------------------------------------------------------------------------------------------------------------------------
-
-	--baseframe is the lowest frame in the window architecture
-	local baseframe = CreateFrame("scrollframe", "DetailsBaseFrame" .. ID, UIParent, "BackdropTemplate")
-	baseframe:SetMovable(true)
-	baseframe:SetResizable(true)
-	baseframe:SetUserPlaced(false)
-	baseframe:SetDontSavePosition(true)
-	baseframe:SetFrameStrata(baseframe_strata)
-	baseframe:SetFrameLevel(2)
-	baseframe.instance = instancia
-
-	local baseframeBorder = DetailsFramework:CreateFullBorder(baseframe:GetName() .. "BaseBorder", baseframe)
-	baseframeBorder:SetBorderSizes(1, 1, 1, 1)
-	baseframeBorder:UpdateSizes()
-	baseframeBorder:SetVertexColor(0, 0, 0, 1)
-	baseframe.border = baseframeBorder
-	baseframe.border:Hide()
-
-	local titleBar = CreateFrame("frame", baseframe:GetName() .. "TitleBar", baseframe, "BackdropTemplate")
-	titleBar:SetPoint("bottomleft", baseframe, "topleft", 0, 0)
-	titleBar:SetPoint("bottomright", baseframe, "topright", 0, 0)
-	titleBar:SetHeight(16)
-	titleBar:EnableMouse(false)
-	baseframe.titleBar = titleBar
-
-	titleBar.texture = titleBar:CreateTexture("$parentTexture", "artwork")
-	titleBar.texture:SetAllPoints()
-	titleBar.texture:SetTexture([[Interface\AddOns\Details\images\bar_serenity]])
-	titleBar.texture:SetVertexColor(0, 0, 0, 0)
-
-	--a background frame that anchors in the topleft of the title bar and bottom right of the baseframe
-	--this frame does not attack to statusbar (yet)
-	local fullWindowFrame = CreateFrame("frame", baseframe:GetName() .. "FullWindowFrame", baseframe, "BackdropTemplate")
-	fullWindowFrame:EnableMouse(false)
-	fullWindowFrame:SetPoint("topleft", titleBar, "topleft", 0, 0)
-	fullWindowFrame:SetPoint("bottomright", baseframe, "bottomright", 0, 0)
-	baseframe.fullWindowFrame = fullWindowFrame
-
-	local fullWindowBorder = DetailsFramework:CreateFullBorder(fullWindowFrame:GetName() .. "Border", fullWindowFrame)
-	fullWindowBorder:SetBorderSizes(1, 1, 1, 1)
-	fullWindowBorder:UpdateSizes()
-	fullWindowBorder:SetVertexColor(0, 0, 0, 1)
-	fullWindowFrame.border = fullWindowBorder
-	fullWindowFrame.border:Hide()
-
-	--background holds the wallpaper, alert strings ans textures, have setallpoints on baseframe
-	--backgrounddisplay is a scrollschild of backgroundframe, hence its children won't show outside its canvas
-	local backgroundframe =  CreateFrame("scrollframe", "Details_WindowFrame"..ID, baseframe) --window frame
-	local backgrounddisplay = CreateFrame("frame", "Details_GumpFrame"..ID, backgroundframe,"BackdropTemplate") --gump frame
-	backgroundframe:SetFrameLevel(3)
-	backgrounddisplay:SetFrameLevel(3)
-	backgroundframe.instance = instancia
-	backgrounddisplay.instance = instancia
-	instancia.windowBackgroundDisplay = backgrounddisplay
-
-	--row frame is the parent of rows, it have setallpoints on baseframe
-	local rowframe = CreateFrame("frame", "DetailsRowFrame"..ID, UIParent) --row frame
-	rowframe:SetAllPoints(baseframe)
-	rowframe:SetFrameStrata(baseframe_strata)
-	rowframe:SetFrameLevel(3)
-	rowframe:EnableMouse(false)
-	instancia.rowframe = rowframe
-
-	function rowframe:SetFrameAlpha(value)
-		local value = parseRowFrameAlpha(value)
-		self:SetAlpha(value)
-	end
-
-	--right click bookmark
-	local switchbutton = CreateFrame("button", "Details_SwitchButtonFrame" ..  ID, UIParent)
-	switchbutton:SetAllPoints(baseframe)
-	switchbutton:SetFrameStrata(baseframe_strata)
-	switchbutton:SetFrameLevel(4)
-	instancia.windowSwitchButton = switchbutton
-
-	--avoid mouse hover over a high window when the menu is open for a lower instance.
-	local anti_menu_overlap = CreateFrame("frame", "Details_WindowFrameAntiMenuOverlap" .. ID, UIParent)
-	anti_menu_overlap:SetSize(100, 13)
-	anti_menu_overlap:SetFrameStrata("DIALOG")
-	anti_menu_overlap:EnableMouse(true)
-	anti_menu_overlap:Hide()
-	--anti_menu_overlap:SetBackdrop(gump_fundo_backdrop) --debug
-	baseframe.anti_menu_overlap = anti_menu_overlap
-
-	--floating frame is an anchor for widgets which should be overlaying the window
-	local floatingframe = CreateFrame("frame", "DetailsInstance"..ID.."BorderHolder", baseframe)
-	floatingframe:SetFrameLevel(baseframe:GetFrameLevel()+7)
-	instancia.floatingframe = floatingframe
-
--- scroll bar -----------------------------------------------------------------------------------------------------------------------------------------------
---create the scrollbar, almost not used.
-
-	local scrollbar = CreateFrame("slider", "Details_ScrollBar"..ID, backgrounddisplay) --scroll
-
-	--scroll image-node up
-		baseframe.scroll_up = backgrounddisplay:CreateTexture(nil, "background")
-		baseframe.scroll_up:SetPoint("topleft", backgrounddisplay, "topright", 0, 0)
-		baseframe.scroll_up:SetTexture(DEFAULT_SKIN)
-		baseframe.scroll_up:SetTexCoord(unpack(COORDS_SLIDER_TOP))
-		baseframe.scroll_up:SetWidth(32)
-		baseframe.scroll_up:SetHeight(32)
-
-	--scroll image-node down
-		baseframe.scroll_down = backgrounddisplay:CreateTexture(nil, "background")
-		baseframe.scroll_down:SetPoint("bottomleft", backgrounddisplay, "bottomright", 0, 0)
-		baseframe.scroll_down:SetTexture(DEFAULT_SKIN)
-		baseframe.scroll_down:SetTexCoord(unpack(COORDS_SLIDER_DOWN))
-		baseframe.scroll_down:SetWidth(32)
-		baseframe.scroll_down:SetHeight(32)
-
-	--scroll image-node middle
-		baseframe.scroll_middle = backgrounddisplay:CreateTexture(nil, "background")
-		baseframe.scroll_middle:SetPoint("top", baseframe.scroll_up, "bottom", 0, 8)
-		baseframe.scroll_middle:SetPoint("bottom", baseframe.scroll_down, "top", 0, -11)
-		baseframe.scroll_middle:SetTexture(DEFAULT_SKIN)
-		baseframe.scroll_middle:SetTexCoord(unpack(COORDS_SLIDER_MIDDLE))
-		baseframe.scroll_middle:SetWidth(32)
-		baseframe.scroll_middle:SetHeight(64)
-
-	--scroll widgets
-		baseframe.button_up = CreateFrame("button", "DetailsScrollUp" .. instancia.meu_id, backgrounddisplay)
-		baseframe.button_down = CreateFrame("button", "DetailsScrollDown" .. instancia.meu_id, backgrounddisplay)
-
-		baseframe.button_up:SetWidth(29)
-		baseframe.button_up:SetHeight(32)
-		baseframe.button_up:SetNormalTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Up]])
-		baseframe.button_up:SetPushedTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Down]])
-		baseframe.button_up:SetDisabledTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Disabled]])
-		baseframe.button_up:Disable()
-
-		baseframe.button_down:SetWidth(29)
-		baseframe.button_down:SetHeight(32)
-		baseframe.button_down:SetNormalTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Up]])
-		baseframe.button_down:SetPushedTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Down]])
-		baseframe.button_down:SetDisabledTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Disabled]])
-		baseframe.button_down:Disable()
-
-		baseframe.button_up:SetPoint("topright", baseframe.scroll_up, "topright", -4, 3)
-		baseframe.button_down:SetPoint("bottomright", baseframe.scroll_down, "bottomright", -4, -6)
-
-		scrollbar:SetPoint("top", baseframe.button_up, "bottom", 0, 12)
-		scrollbar:SetPoint("bottom", baseframe.button_down, "top", 0, -12)
-		scrollbar:SetPoint("left", backgrounddisplay, "right", 3, 0)
-		scrollbar:Show()
-
-		--config set
-		scrollbar:SetOrientation("VERTICAL")
-		scrollbar.scrollMax = 0
-		scrollbar:SetMinMaxValues(0, 0)
-		scrollbar:SetValue(0)
-		scrollbar.ultimo = 0
-
-		--thumb
-		scrollbar.thumb = scrollbar:CreateTexture(nil, "overlay")
-		scrollbar.thumb:SetTexture([[Interface\Buttons\UI-ScrollBar-Knob]])
-		scrollbar.thumb:SetSize(29, 30)
-		scrollbar:SetThumbTexture (scrollbar.thumb)
-
-		--scripts
-		button_down_scripts (baseframe, backgrounddisplay, instancia, scrollbar)
-		button_up_scripts (baseframe, backgrounddisplay, instancia, scrollbar)
-
--- stretch button -----------------------------------------------------------------------------------------------------------------------------------------------
-
-		baseframe.button_stretch = CreateFrame("button", "DetailsButtonStretch" .. instancia.meu_id, baseframe)
-		baseframe.button_stretch:SetPoint("bottom", baseframe, "top", 0, 20)
-		baseframe.button_stretch:SetPoint("right", baseframe, "right", -27, 0)
-		baseframe.button_stretch:SetFrameLevel(1)
-
-		local stretch_texture = baseframe.button_stretch:CreateTexture(nil, "overlay")
-		stretch_texture:SetTexture(DEFAULT_SKIN)
-		stretch_texture:SetTexCoord(unpack(COORDS_STRETCH))
-		stretch_texture:SetWidth(32)
-		stretch_texture:SetHeight(16)
-		stretch_texture:SetAllPoints(baseframe.button_stretch)
-		baseframe.button_stretch.texture = stretch_texture
-
-		baseframe.button_stretch:SetWidth(32)
-		baseframe.button_stretch:SetHeight(16)
-
-		baseframe.button_stretch:Show()
-		Details.FadeHandler.Fader(baseframe.button_stretch, "ALPHA", 0)
-
-		button_stretch_scripts (baseframe, backgrounddisplay, instancia)
-
--- main window config -------------------------------------------------------------------------------------------------------------------------------------------------
-
-		baseframe:SetClampedToScreen(true)
-		baseframe:SetSize(Details.new_window_size.width, Details.new_window_size.height)
-
-		baseframe:SetPoint("center", UIParent)
-		baseframe:EnableMouseWheel(false)
-		baseframe:EnableMouse(true)
-
-	    baseframe:SetResizeBounds(150, 7, _detalhes.max_window_size.width, _detalhes.max_window_size.height)
-
-		baseframe:SetBackdrop(defaultBackdropSt)
-		baseframe:SetBackdropColor(instancia.bg_r, instancia.bg_g, instancia.bg_b, instancia.bg_alpha)
-
--- background window config -------------------------------------------------------------------------------------------------------------------------------------------------
-
-		backgroundframe:SetAllPoints(baseframe)
-		backgroundframe:SetScrollChild(backgrounddisplay)
-
-		backgrounddisplay:SetResizable(true)
-		backgrounddisplay:SetPoint("topleft", baseframe, "topleft")
-		backgrounddisplay:SetPoint("bottomright", baseframe, "bottomright")
-		backgrounddisplay:SetBackdrop(defaultBackdropSt)
-		backgrounddisplay:SetBackdropColor(instancia.bg_r, instancia.bg_g, instancia.bg_b, instancia.bg_alpha)
-
--- instance mini widgets -------------------------------------------------------------------------------------------------------------------------------------------------
-
-	--overall data warning
-		instancia.overall_data_warning = backgrounddisplay:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
-		instancia.overall_data_warning:SetHeight(64)
-		instancia.overall_data_warning:SetPoint("center", backgrounddisplay, "center")
-		instancia.overall_data_warning:SetTextColor(.8, .8, .8, .5)
-		instancia.overall_data_warning:Hide()
-		instancia.overall_data_warning:SetText(Loc["STRING_TUTORIAL_OVERALL1"])
-
-	--freeze icon
-		instancia.freeze_icon = backgrounddisplay:CreateTexture(nil, "overlay")
-			instancia.freeze_icon:SetWidth(64)
-			instancia.freeze_icon:SetHeight(64)
-			instancia.freeze_icon:SetPoint("center", backgrounddisplay, "center")
-			instancia.freeze_icon:SetPoint("left", backgrounddisplay, "left")
-			instancia.freeze_icon:Hide()
-
-		instancia.freeze_texto = backgrounddisplay:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
-			instancia.freeze_texto:SetHeight(64)
-			instancia.freeze_texto:SetPoint("left", instancia.freeze_icon, "right", -18, 0)
-			instancia.freeze_texto:SetTextColor(1, 1, 1)
-			instancia.freeze_texto:Hide()
-
-	--details version
-		instancia._version = baseframe:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
-			--instancia._version:SetPoint("left", backgrounddisplay, "left", 20, 0)
-			instancia._version:SetTextColor(1, 1, 1)
-			instancia._version:SetText("this is a alpha version of Details\nyou can help us sending bug reports\nuse the blue button.")
-			if (not Details.initializing) then
-
-			end
-			instancia._version:Hide()
-
-
-	--wallpaper
-		baseframe.wallpaper = baseframe:CreateTexture(nil, "overlay")
-		baseframe.wallpaper:Hide()
-
-	--alert frame
-		baseframe.alert = CreateAlertFrame (baseframe, instancia)
-
--- resizers & lock button ~lock ------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	--right resizer
-		baseframe.resize_direita = CreateFrame("button", "Details_Resize_Direita"..ID, baseframe)
-
-		local resize_direita_texture = baseframe.resize_direita:CreateTexture(nil, "overlay")
-		resize_direita_texture:SetWidth(16)
-		resize_direita_texture:SetHeight(16)
-		resize_direita_texture:SetTexture(DEFAULT_SKIN)
-		resize_direita_texture:SetTexCoord(unpack(COORDS_RESIZE_RIGHT))
-		resize_direita_texture:SetAllPoints(baseframe.resize_direita)
-		baseframe.resize_direita.texture = resize_direita_texture
-
-		baseframe.resize_direita:SetWidth(16)
-		baseframe.resize_direita:SetHeight(16)
-		baseframe.resize_direita:SetPoint("bottomright", baseframe, "bottomright", 0, 0)
-		baseframe.resize_direita:EnableMouse(true)
-		baseframe.resize_direita:SetFrameStrata("HIGH")
-		baseframe.resize_direita:SetFrameLevel(baseframe:GetFrameLevel() + 6)
-		baseframe.resize_direita.side = 2
-
-	--lock window button
-		baseframe.lock_button = CreateFrame("button", "Details_Lock_Button"..ID, baseframe)
-		baseframe.lock_button:SetPoint("right", baseframe.resize_direita, "left", -1, 1.5)
-		baseframe.lock_button:SetFrameLevel(baseframe:GetFrameLevel() + 6)
-		baseframe.lock_button:SetWidth(40)
-		baseframe.lock_button:SetHeight(16)
-		baseframe.lock_button.label = baseframe.lock_button:CreateFontString(nil, "overlay", "GameFontNormal")
-		baseframe.lock_button.label:SetPoint("right", baseframe.lock_button, "right")
-		baseframe.lock_button.label:SetTextColor(.6, .6, .6, .7)
-		baseframe.lock_button.label:SetJustifyH("right")
-		baseframe.lock_button.label:SetText(Loc["STRING_LOCK_WINDOW"])
-		baseframe.lock_button:SetWidth(baseframe.lock_button.label:GetStringWidth()+2)
-		baseframe.lock_button:SetScript("OnClick", lockFunctionOnClick)
-		baseframe.lock_button:SetScript("OnEnter", lockFunctionOnEnter)
-		baseframe.lock_button:SetScript("OnLeave", lockFunctionOnLeave)
-		baseframe.lock_button:SetScript("OnHide", lockFunctionOnHide)
-		baseframe.lock_button:SetFrameStrata("HIGH")
-		baseframe.lock_button:SetFrameLevel(baseframe:GetFrameLevel() + 6)
-		baseframe.lock_button.instancia = instancia
-
-	--left resizer
-		baseframe.resize_esquerda = CreateFrame("button", "Details_Resize_Esquerda"..ID, baseframe)
-
-		local resize_esquerda_texture = baseframe.resize_esquerda:CreateTexture(nil, "overlay")
-		resize_esquerda_texture:SetWidth(16)
-		resize_esquerda_texture:SetHeight(16)
-		resize_esquerda_texture:SetTexture(DEFAULT_SKIN)
-		resize_esquerda_texture:SetTexCoord(unpack(COORDS_RESIZE_LEFT))
-		resize_esquerda_texture:SetAllPoints(baseframe.resize_esquerda)
-		baseframe.resize_esquerda.texture = resize_esquerda_texture
-
-		baseframe.resize_esquerda:SetWidth(16)
-		baseframe.resize_esquerda:SetHeight(16)
-		baseframe.resize_esquerda:SetPoint("bottomleft", baseframe, "bottomleft", 0, 0)
-		baseframe.resize_esquerda:EnableMouse(true)
-		baseframe.resize_esquerda:SetFrameStrata("HIGH")
-		baseframe.resize_esquerda:SetFrameLevel(baseframe:GetFrameLevel() + 6)
-
-		baseframe.resize_esquerda:SetAlpha(0)
-		baseframe.resize_direita:SetAlpha(0)
-
-		if (instancia.isLocked) then
-			instancia.isLocked = not instancia.isLocked
-			lockFunctionOnClick (baseframe.lock_button, nil, nil, true)
-		end
-
-		Details.FadeHandler.Fader(baseframe.lock_button, -1, 3.0)
-
--- scripts ------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	BFrame_scripts (baseframe, instancia) --baseframe
-	BGFrame_scripts(switchbutton, baseframe, instancia) --backgroundframe
-	BGFrame_scripts(backgrounddisplay, baseframe, instancia)
-
-	iterate_scroll_scripts (backgrounddisplay, backgroundframe, baseframe, scrollbar, instancia)
-
-
--- create toolbar ----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	gump:CriaCabecalho (baseframe, instancia)
-
--- create statusbar ----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	gump:CriaRodape (baseframe, instancia)
-
--- left and right side bars ------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- ~barra ~bordas ~border
-
-	--left
-		baseframe.barra_esquerda = floatingframe:CreateTexture(nil, "artwork")
-		baseframe.barra_esquerda:SetTexture(DEFAULT_SKIN)
-		baseframe.barra_esquerda:SetTexCoord(unpack(COORDS_LEFT_SIDE_BAR))
-		baseframe.barra_esquerda:SetWidth(64)
-		baseframe.barra_esquerda:SetHeight	(512)
-		baseframe.barra_esquerda:SetPoint("topleft", baseframe, "topleft", -56, 0)
-		baseframe.barra_esquerda:SetPoint("bottomleft", baseframe, "bottomleft", -56, -14)
-	--right
-		baseframe.barra_direita = floatingframe:CreateTexture(nil, "artwork")
-		baseframe.barra_direita:SetTexture(DEFAULT_SKIN)
-		baseframe.barra_direita:SetTexCoord(unpack(COORDS_RIGHT_SIDE_BAR))
-		baseframe.barra_direita:SetWidth(64)
-		baseframe.barra_direita:SetHeight(512)
-		baseframe.barra_direita:SetPoint("topright", baseframe, "topright", 56, 0)
-		baseframe.barra_direita:SetPoint("bottomright", baseframe, "bottomright", 56, -14)
-	--bottom
-		baseframe.barra_fundo = floatingframe:CreateTexture(nil, "artwork")
-		baseframe.barra_fundo:SetTexture(DEFAULT_SKIN)
-		baseframe.barra_fundo:SetTexCoord(unpack(COORDS_BOTTOM_SIDE_BAR))
-		baseframe.barra_fundo:SetWidth(512)
-		baseframe.barra_fundo:SetHeight(64)
-		baseframe.barra_fundo:SetPoint("bottomleft", baseframe, "bottomleft", 0, -56)
-		baseframe.barra_fundo:SetPoint("bottomright", baseframe, "bottomright", 0, -56)
-
--- break snap button ----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		instancia.break_snap_button = CreateFrame("button", "DetailsBreakSnapButton" .. ID, floatingframe)
-		instancia.break_snap_button:SetPoint("bottom", baseframe.resize_direita, "top", -1, 0)
-		instancia.break_snap_button:SetFrameLevel(baseframe:GetFrameLevel() + 5)
-		instancia.break_snap_button:SetSize(13, 13)
-		instancia.break_snap_button:SetAlpha(0)
-
-		instancia.break_snap_button.instancia = instancia
-
-		instancia.break_snap_button:SetScript("OnClick", function()
-			if (Details.disable_lock_ungroup_buttons) then
-				return
-			end
-			instancia:Desagrupar (-1)
-			--hide tutorial
-			if (DetailsWindowGroupPopUp1 and DetailsWindowGroupPopUp1:IsShown()) then
-				DetailsWindowGroupPopUp1:Hide()
-			end
-		end)
-
-		instancia.break_snap_button:SetScript("OnEnter", unSnapButtonOnEnter)
-		instancia.break_snap_button:SetScript("OnLeave", unSnapButtonOnLeave)
-
-		instancia.break_snap_button:SetNormalTexture(DEFAULT_SKIN)
-		instancia.break_snap_button:SetDisabledTexture(DEFAULT_SKIN)
-		instancia.break_snap_button:SetHighlightTexture(DEFAULT_SKIN, "ADD")
-		instancia.break_snap_button:SetPushedTexture(DEFAULT_SKIN)
-
-		instancia.break_snap_button:GetNormalTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
-		instancia.break_snap_button:GetDisabledTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
-		instancia.break_snap_button:GetHighlightTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
-		instancia.break_snap_button:GetPushedTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
-
--- scripts ------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-		setWindowResizeScripts (baseframe.resize_direita, instancia, scrollbar, ">", baseframe)
-		setWindowResizeScripts (baseframe.resize_esquerda, instancia, scrollbar, "<", baseframe)
-
--- side bars highlights ------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	--top
-		local fcima = CreateFrame("frame", "DetailsTopSideBarHighlight" .. instancia.meu_id, floatingframe)
-		gump:CreateFlashAnimation (fcima)
-		fcima:Hide()
-
-		instancia.h_cima = fcima:CreateTexture(nil, "overlay")
-		instancia.h_cima:SetTexture([[Interface\AddOns\Details\images\highlight_updown]])
-		instancia.h_cima:SetTexCoord(0, 1, 0.5, 1)
-		instancia.h_cima:SetPoint("topleft", baseframe.cabecalho.top_bg, "bottomleft", -10, 37)
-		instancia.h_cima:SetPoint("topright", baseframe.cabecalho.ball_r, "bottomright", -97, 37)
-		instancia.h_cima:SetDesaturated(true)
-		fcima.texture = instancia.h_cima
-		instancia.h_cima = fcima
-
-	--bottom
-		local fbaixo = CreateFrame("frame", "DetailsBottomSideBarHighlight" .. instancia.meu_id, floatingframe)
-		gump:CreateFlashAnimation (fbaixo)
-		fbaixo:Hide()
-
-		instancia.h_baixo = fbaixo:CreateTexture(nil, "overlay")
-		instancia.h_baixo:SetTexture([[Interface\AddOns\Details\images\highlight_updown]])
-		instancia.h_baixo:SetTexCoord(0, 1, 0, 0.5)
-		instancia.h_baixo:SetPoint("topleft", baseframe.rodape.esquerdo, "bottomleft", 16, 17)
-		instancia.h_baixo:SetPoint("topright", baseframe.rodape.direita, "bottomright", -16, 17)
-		instancia.h_baixo:SetDesaturated(true)
-		fbaixo.texture = instancia.h_baixo
-		instancia.h_baixo = fbaixo
-
-	--left
-		local fesquerda = CreateFrame("frame", "DetailsLeftSideBarHighlight" .. instancia.meu_id, floatingframe)
-		gump:CreateFlashAnimation (fesquerda)
-		fesquerda:Hide()
-
-		instancia.h_esquerda = fesquerda:CreateTexture(nil, "overlay")
-		instancia.h_esquerda:SetTexture([[Interface\AddOns\Details\images\highlight_leftright]])
-		instancia.h_esquerda:SetTexCoord(0.5, 1, 0, 1)
-		instancia.h_esquerda:SetPoint("topleft", baseframe.barra_esquerda, "topleft", 40, 0)
-		instancia.h_esquerda:SetPoint("bottomleft", baseframe.barra_esquerda, "bottomleft", 40, 0)
-		instancia.h_esquerda:SetDesaturated(true)
-		fesquerda.texture = instancia.h_esquerda
-		instancia.h_esquerda = fesquerda
-
-	--right
-		local fdireita = CreateFrame("frame", "DetailsRightSideBarHighlight" .. instancia.meu_id, floatingframe)
-		gump:CreateFlashAnimation (fdireita)
-		fdireita:Hide()
-
-		instancia.h_direita = fdireita:CreateTexture(nil, "overlay")
-		instancia.h_direita:SetTexture([[Interface\AddOns\Details\images\highlight_leftright]])
-		instancia.h_direita:SetTexCoord(0, 0.5, 1, 0)
-		instancia.h_direita:SetPoint("topleft", baseframe.barra_direita, "topleft", 8, 18)
-		instancia.h_direita:SetPoint("bottomleft", baseframe.barra_direita, "bottomleft", 8, 0)
-		instancia.h_direita:SetDesaturated(true)
-		fdireita.texture = instancia.h_direita
-		instancia.h_direita = fdireita
-
---done
-
-	if (criando) then
-		local CProps = {
-			["altura"] = 100,
-			["largura"] = 200,
-			["barras"] = 50,
-			["barrasvisiveis"] = 0,
-			["x"] = 0,
-			["y"] = 0,
-			["w"] = 0,
-			["h"] = 0
-		}
-		instancia.locs = CProps
-	end
-
-	return baseframe, backgroundframe, backgrounddisplay, scrollbar
-
-end
-
-function Details:IsShowingOverallDataWarning()
-	return self.overall_data_warning:IsShown()
-end
-
-function Details:ShowOverallDataWarning (state)
-	if (state) then
-		self.overall_data_warning:Show()
-		self.overall_data_warning:SetWidth(self:GetSize() - 20)
-	else
-		self.overall_data_warning:Hide()
-	end
-end
-
-
-function Details:SetBarFollowPlayer (follow)
-
-	if (follow == nil) then
-		follow = self.following.enabled
-	end
-
-	self.following.enabled = follow
-
-	self:RefreshBars()
-	self:InstanceReset()
-	self:ReajustaGump()
-end
-
-function Details:SetBarOrientationDirection (orientation)
-	if (orientation == nil) then
-		orientation = self.bars_inverted
-	end
-
-	self.bars_inverted = orientation
-
-	self:InstanceRefreshRows()
-	self:RefreshBars()
-	self:InstanceReset()
-	self:ReajustaGump()
-end
-
-function Details:SetBarGrowDirection (direction)
-	if (not direction) then
-		direction = self.bars_grow_direction
-	end
-
-	self.bars_grow_direction = direction
-
-	local topOffset = self.row_info.row_offsets.top
-	local bottomOffset = self.row_info.row_offsets.bottom
-	local leftOffset = self.row_info.row_offsets.left
-
-	local x = self.row_info.space.left + leftOffset
-
-	local bars = self.barras or self.Bars --.Bars for third-party plugins
-	local baseframe = self.baseframe or self.Frame --.Frame for plugins
-	local height = self.row_height
-
-	if (direction == 1) then --top to bottom
-		local row_y_offset = topOffset
-
-		for index, row in ipairs(bars) do
-			local y = height * (index - 1)
-			y = y * -1
-			row:ClearAllPoints()
-
-			if (self.toolbar_side == 1) then
-				--if titlebar is attached to the top side, don't add any midifiers
-				row:SetPoint("topleft", baseframe, "topleft", x, y + row_y_offset)
-			else
-				--if the titlebar is on the bottom side, remove the gap between the baseframe and the titlebar
-				row:SetPoint("topleft", baseframe, "topleft", x, y - 1 + row_y_offset)
-			end
-		end
-
-	elseif (direction == 2) then --bottom to top
-		local row_y_offset = bottomOffset
-
-		for index, row in ipairs(bars) do
-			local y = height * (index - 1)
-			row:ClearAllPoints()
-			if (self.toolbar_side == 1) then
-				--if the titlebar is attached to the top side, we want to align bars a little above
-				row:SetPoint("bottomleft", baseframe, "bottomleft", x, y + 2 + row_y_offset)
-			else
-				--the titlebar is on the bottom side, align bars on the bottom
-				row:SetPoint("bottomleft", baseframe, "bottomleft", x, y + 0 + row_y_offset)
-			end
-		end
-	end
-
-	--update all row width
-	if (self.bar_mod and self.bar_mod ~= 0) then
-		for index = 1, #bars do
-			bars[index]:SetWidth(baseframe:GetWidth() + self.bar_mod)
-		end
-	else
-		--width also set on windows.lua > Reajusta Gump ()
-		local rightOffset = self.row_info.row_offsets.right
-		for index = 1, #bars do
-			bars[index]:SetWidth(baseframe:GetWidth() + self.row_info.space.right + rightOffset)
-		end
-	end
-end
-
 local windowLineMixin = {
 	SetLineTexture = function(self, texture, coords, vertexColor)
 		self.texture:SetTexture(texture)
@@ -6226,6 +5635,597 @@ local build_mode_list = function(self, deltaTime)
 end
 
 
+--~inicio ~janela ~window ~nova ~start
+function gump:CriaJanelaPrincipal (ID, instancia, criando)
+
+	-- main frames -----------------------------------------------------------------------------------------------------------------------------------------------
+	
+		--baseframe is the lowest frame in the window architecture
+		local baseframe = CreateFrame("scrollframe", "DetailsBaseFrame" .. ID, UIParent, "BackdropTemplate")
+		baseframe:SetMovable(true)
+		baseframe:SetResizable(true)
+		baseframe:SetUserPlaced(false)
+		baseframe:SetDontSavePosition(true)
+		baseframe:SetFrameStrata(baseframe_strata)
+		baseframe:SetFrameLevel(2)
+		baseframe.instance = instancia
+	
+		local baseframeBorder = DetailsFramework:CreateFullBorder(baseframe:GetName() .. "BaseBorder", baseframe)
+		baseframeBorder:SetBorderSizes(1, 1, 1, 1)
+		baseframeBorder:UpdateSizes()
+		baseframeBorder:SetVertexColor(0, 0, 0, 1)
+		baseframe.border = baseframeBorder
+		baseframe.border:Hide()
+	
+		local titleBar = CreateFrame("frame", baseframe:GetName() .. "TitleBar", baseframe, "BackdropTemplate")
+		titleBar:SetPoint("bottomleft", baseframe, "topleft", 0, 0)
+		titleBar:SetPoint("bottomright", baseframe, "topright", 0, 0)
+		titleBar:SetHeight(16)
+		titleBar:EnableMouse(false)
+		baseframe.titleBar = titleBar
+	
+		titleBar.texture = titleBar:CreateTexture("$parentTexture", "artwork")
+		titleBar.texture:SetAllPoints()
+		titleBar.texture:SetTexture([[Interface\AddOns\Details\images\bar_serenity]])
+		titleBar.texture:SetVertexColor(0, 0, 0, 0)
+	
+		--a background frame that anchors in the topleft of the title bar and bottom right of the baseframe
+		--this frame does not attack to statusbar (yet)
+		local fullWindowFrame = CreateFrame("frame", baseframe:GetName() .. "FullWindowFrame", baseframe, "BackdropTemplate")
+		fullWindowFrame:EnableMouse(false)
+		fullWindowFrame:SetPoint("topleft", titleBar, "topleft", 0, 0)
+		fullWindowFrame:SetPoint("bottomright", baseframe, "bottomright", 0, 0)
+		baseframe.fullWindowFrame = fullWindowFrame
+	
+		local fullWindowBorder = DetailsFramework:CreateFullBorder(fullWindowFrame:GetName() .. "Border", fullWindowFrame)
+		fullWindowBorder:SetBorderSizes(1, 1, 1, 1)
+		fullWindowBorder:UpdateSizes()
+		fullWindowBorder:SetVertexColor(0, 0, 0, 1)
+		fullWindowFrame.border = fullWindowBorder
+		fullWindowFrame.border:Hide()
+	
+		--background holds the wallpaper, alert strings ans textures, have setallpoints on baseframe
+		--backgrounddisplay is a scrollschild of backgroundframe, hence its children won't show outside its canvas
+		local backgroundframe =  CreateFrame("scrollframe", "Details_WindowFrame"..ID, baseframe) --window frame
+		local backgrounddisplay = CreateFrame("frame", "Details_GumpFrame"..ID, backgroundframe,"BackdropTemplate") --gump frame
+		backgroundframe:SetFrameLevel(3)
+		backgrounddisplay:SetFrameLevel(3)
+		backgroundframe.instance = instancia
+		backgrounddisplay.instance = instancia
+		instancia.windowBackgroundDisplay = backgrounddisplay
+	
+		--row frame is the parent of rows, it have setallpoints on baseframe
+		local rowframe = CreateFrame("frame", "DetailsRowFrame"..ID, UIParent) --row frame
+		rowframe:SetAllPoints(baseframe)
+		rowframe:SetFrameStrata(baseframe_strata)
+		rowframe:SetFrameLevel(3)
+		rowframe:EnableMouse(false)
+		instancia.rowframe = rowframe
+	
+		function rowframe:SetFrameAlpha(value)
+			local value = parseRowFrameAlpha(value)
+			self:SetAlpha(value)
+		end
+	
+		--right click bookmark
+		local switchbutton = CreateFrame("button", "Details_SwitchButtonFrame" ..  ID, UIParent)
+		switchbutton:SetAllPoints(baseframe)
+		switchbutton:SetFrameStrata(baseframe_strata)
+		switchbutton:SetFrameLevel(4)
+		instancia.windowSwitchButton = switchbutton
+	
+		--avoid mouse hover over a high window when the menu is open for a lower instance.
+		local anti_menu_overlap = CreateFrame("frame", "Details_WindowFrameAntiMenuOverlap" .. ID, UIParent)
+		anti_menu_overlap:SetSize(100, 13)
+		anti_menu_overlap:SetFrameStrata("DIALOG")
+		anti_menu_overlap:EnableMouse(true)
+		anti_menu_overlap:Hide()
+		--anti_menu_overlap:SetBackdrop(gump_fundo_backdrop) --debug
+		baseframe.anti_menu_overlap = anti_menu_overlap
+	
+		--floating frame is an anchor for widgets which should be overlaying the window
+		local floatingframe = CreateFrame("frame", "DetailsInstance"..ID.."BorderHolder", baseframe)
+		floatingframe:SetFrameLevel(baseframe:GetFrameLevel()+7)
+		instancia.floatingframe = floatingframe
+	
+	-- scroll bar -----------------------------------------------------------------------------------------------------------------------------------------------
+	--create the scrollbar, almost not used.
+	
+		local scrollbar = CreateFrame("slider", "Details_ScrollBar"..ID, backgrounddisplay) --scroll
+	
+		--scroll image-node up
+			baseframe.scroll_up = backgrounddisplay:CreateTexture(nil, "background")
+			baseframe.scroll_up:SetPoint("topleft", backgrounddisplay, "topright", 0, 0)
+			baseframe.scroll_up:SetTexture(DEFAULT_SKIN)
+			baseframe.scroll_up:SetTexCoord(unpack(COORDS_SLIDER_TOP))
+			baseframe.scroll_up:SetWidth(32)
+			baseframe.scroll_up:SetHeight(32)
+	
+		--scroll image-node down
+			baseframe.scroll_down = backgrounddisplay:CreateTexture(nil, "background")
+			baseframe.scroll_down:SetPoint("bottomleft", backgrounddisplay, "bottomright", 0, 0)
+			baseframe.scroll_down:SetTexture(DEFAULT_SKIN)
+			baseframe.scroll_down:SetTexCoord(unpack(COORDS_SLIDER_DOWN))
+			baseframe.scroll_down:SetWidth(32)
+			baseframe.scroll_down:SetHeight(32)
+	
+		--scroll image-node middle
+			baseframe.scroll_middle = backgrounddisplay:CreateTexture(nil, "background")
+			baseframe.scroll_middle:SetPoint("top", baseframe.scroll_up, "bottom", 0, 8)
+			baseframe.scroll_middle:SetPoint("bottom", baseframe.scroll_down, "top", 0, -11)
+			baseframe.scroll_middle:SetTexture(DEFAULT_SKIN)
+			baseframe.scroll_middle:SetTexCoord(unpack(COORDS_SLIDER_MIDDLE))
+			baseframe.scroll_middle:SetWidth(32)
+			baseframe.scroll_middle:SetHeight(64)
+	
+		--scroll widgets
+			baseframe.button_up = CreateFrame("button", "DetailsScrollUp" .. instancia.meu_id, backgrounddisplay)
+			baseframe.button_down = CreateFrame("button", "DetailsScrollDown" .. instancia.meu_id, backgrounddisplay)
+	
+			baseframe.button_up:SetWidth(29)
+			baseframe.button_up:SetHeight(32)
+			baseframe.button_up:SetNormalTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Up]])
+			baseframe.button_up:SetPushedTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Down]])
+			baseframe.button_up:SetDisabledTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollUpButton-Disabled]])
+			baseframe.button_up:Disable()
+	
+			baseframe.button_down:SetWidth(29)
+			baseframe.button_down:SetHeight(32)
+			baseframe.button_down:SetNormalTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Up]])
+			baseframe.button_down:SetPushedTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Down]])
+			baseframe.button_down:SetDisabledTexture([[Interface\BUTTONS\UI-ScrollBar-ScrollDownButton-Disabled]])
+			baseframe.button_down:Disable()
+	
+			baseframe.button_up:SetPoint("topright", baseframe.scroll_up, "topright", -4, 3)
+			baseframe.button_down:SetPoint("bottomright", baseframe.scroll_down, "bottomright", -4, -6)
+	
+			scrollbar:SetPoint("top", baseframe.button_up, "bottom", 0, 12)
+			scrollbar:SetPoint("bottom", baseframe.button_down, "top", 0, -12)
+			scrollbar:SetPoint("left", backgrounddisplay, "right", 3, 0)
+			scrollbar:Show()
+	
+			--config set
+			scrollbar:SetOrientation("VERTICAL")
+			scrollbar.scrollMax = 0
+			scrollbar:SetMinMaxValues(0, 0)
+			scrollbar:SetValue(0)
+			scrollbar.ultimo = 0
+	
+			--thumb
+			scrollbar.thumb = scrollbar:CreateTexture(nil, "overlay")
+			scrollbar.thumb:SetTexture([[Interface\Buttons\UI-ScrollBar-Knob]])
+			scrollbar.thumb:SetSize(29, 30)
+			scrollbar:SetThumbTexture (scrollbar.thumb)
+	
+			--scripts
+			button_down_scripts (baseframe, backgrounddisplay, instancia, scrollbar)
+			button_up_scripts (baseframe, backgrounddisplay, instancia, scrollbar)
+	
+	-- stretch button -----------------------------------------------------------------------------------------------------------------------------------------------
+	
+			baseframe.button_stretch = CreateFrame("button", "DetailsButtonStretch" .. instancia.meu_id, baseframe)
+			baseframe.button_stretch:SetPoint("bottom", baseframe, "top", 0, 20)
+			baseframe.button_stretch:SetPoint("right", baseframe, "right", -27, 0)
+			baseframe.button_stretch:SetFrameLevel(1)
+	
+			local stretch_texture = baseframe.button_stretch:CreateTexture(nil, "overlay")
+			stretch_texture:SetTexture(DEFAULT_SKIN)
+			stretch_texture:SetTexCoord(unpack(COORDS_STRETCH))
+			stretch_texture:SetWidth(32)
+			stretch_texture:SetHeight(16)
+			stretch_texture:SetAllPoints(baseframe.button_stretch)
+			baseframe.button_stretch.texture = stretch_texture
+	
+			baseframe.button_stretch:SetWidth(32)
+			baseframe.button_stretch:SetHeight(16)
+	
+			baseframe.button_stretch:Show()
+			Details.FadeHandler.Fader(baseframe.button_stretch, "ALPHA", 0)
+	
+			button_stretch_scripts (baseframe, backgrounddisplay, instancia)
+	
+	-- main window config -------------------------------------------------------------------------------------------------------------------------------------------------
+	
+			baseframe:SetClampedToScreen(true)
+			baseframe:SetSize(Details.new_window_size.width, Details.new_window_size.height)
+	
+			baseframe:SetPoint("center", UIParent)
+			baseframe:EnableMouseWheel(false)
+			baseframe:EnableMouse(true)
+	
+			baseframe:SetResizeBounds(150, 7, _detalhes.max_window_size.width, _detalhes.max_window_size.height)
+	
+			baseframe:SetBackdrop(defaultBackdropSt)
+			baseframe:SetBackdropColor(instancia.bg_r, instancia.bg_g, instancia.bg_b, instancia.bg_alpha)
+	
+	-- background window config -------------------------------------------------------------------------------------------------------------------------------------------------
+	
+			backgroundframe:SetAllPoints(baseframe)
+			backgroundframe:SetScrollChild(backgrounddisplay)
+	
+			backgrounddisplay:SetResizable(true)
+			backgrounddisplay:SetPoint("topleft", baseframe, "topleft")
+			backgrounddisplay:SetPoint("bottomright", baseframe, "bottomright")
+			backgrounddisplay:SetBackdrop(defaultBackdropSt)
+			backgrounddisplay:SetBackdropColor(instancia.bg_r, instancia.bg_g, instancia.bg_b, instancia.bg_alpha)
+	
+	-- instance mini widgets -------------------------------------------------------------------------------------------------------------------------------------------------
+	
+		--overall data warning
+			instancia.overall_data_warning = backgrounddisplay:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
+			instancia.overall_data_warning:SetHeight(64)
+			instancia.overall_data_warning:SetPoint("center", backgrounddisplay, "center")
+			instancia.overall_data_warning:SetTextColor(.8, .8, .8, .5)
+			instancia.overall_data_warning:Hide()
+			instancia.overall_data_warning:SetText(Loc["STRING_TUTORIAL_OVERALL1"])
+	
+		--freeze icon
+			instancia.freeze_icon = backgrounddisplay:CreateTexture(nil, "overlay")
+				instancia.freeze_icon:SetWidth(64)
+				instancia.freeze_icon:SetHeight(64)
+				instancia.freeze_icon:SetPoint("center", backgrounddisplay, "center")
+				instancia.freeze_icon:SetPoint("left", backgrounddisplay, "left")
+				instancia.freeze_icon:Hide()
+	
+			instancia.freeze_texto = backgrounddisplay:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
+				instancia.freeze_texto:SetHeight(64)
+				instancia.freeze_texto:SetPoint("left", instancia.freeze_icon, "right", -18, 0)
+				instancia.freeze_texto:SetTextColor(1, 1, 1)
+				instancia.freeze_texto:Hide()
+	
+		--details version
+			instancia._version = baseframe:CreateFontString(nil, "overlay", "GameFontHighlightSmall")
+				--instancia._version:SetPoint("left", backgrounddisplay, "left", 20, 0)
+				instancia._version:SetTextColor(1, 1, 1)
+				instancia._version:SetText("this is a alpha version of Details\nyou can help us sending bug reports\nuse the blue button.")
+				if (not Details.initializing) then
+	
+				end
+				instancia._version:Hide()
+	
+	
+		--wallpaper
+			baseframe.wallpaper = baseframe:CreateTexture(nil, "overlay")
+			baseframe.wallpaper:Hide()
+	
+		--alert frame
+			baseframe.alert = CreateAlertFrame (baseframe, instancia)
+	
+	-- resizers & lock button ~lock ------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+		--right resizer
+			baseframe.resize_direita = CreateFrame("button", "Details_Resize_Direita"..ID, baseframe)
+	
+			local resize_direita_texture = baseframe.resize_direita:CreateTexture(nil, "overlay")
+			resize_direita_texture:SetWidth(16)
+			resize_direita_texture:SetHeight(16)
+			resize_direita_texture:SetTexture(DEFAULT_SKIN)
+			resize_direita_texture:SetTexCoord(unpack(COORDS_RESIZE_RIGHT))
+			resize_direita_texture:SetAllPoints(baseframe.resize_direita)
+			baseframe.resize_direita.texture = resize_direita_texture
+	
+			baseframe.resize_direita:SetWidth(16)
+			baseframe.resize_direita:SetHeight(16)
+			baseframe.resize_direita:SetPoint("bottomright", baseframe, "bottomright", 0, 0)
+			baseframe.resize_direita:EnableMouse(true)
+			baseframe.resize_direita:SetFrameStrata("HIGH")
+			baseframe.resize_direita:SetFrameLevel(baseframe:GetFrameLevel() + 6)
+			baseframe.resize_direita.side = 2
+	
+		--lock window button
+			baseframe.lock_button = CreateFrame("button", "Details_Lock_Button"..ID, baseframe)
+			baseframe.lock_button:SetPoint("right", baseframe.resize_direita, "left", -1, 1.5)
+			baseframe.lock_button:SetFrameLevel(baseframe:GetFrameLevel() + 6)
+			baseframe.lock_button:SetWidth(40)
+			baseframe.lock_button:SetHeight(16)
+			baseframe.lock_button.label = baseframe.lock_button:CreateFontString(nil, "overlay", "GameFontNormal")
+			baseframe.lock_button.label:SetPoint("right", baseframe.lock_button, "right")
+			baseframe.lock_button.label:SetTextColor(.6, .6, .6, .7)
+			baseframe.lock_button.label:SetJustifyH("right")
+				baseframe.lock_button.label:SetText(Loc["STRING_LOCK_WINDOW"])
+				baseframe.lock_button:SetWidth(baseframe.lock_button.label:GetStringWidth()+2)
+				baseframe.lock_button:SetScript("OnClick", lockFunctionOnClick)
+				baseframe.lock_button:SetScript("OnEnter", lockFunctionOnEnter)
+				baseframe.lock_button:SetScript("OnLeave", lockFunctionOnLeave)
+				baseframe.lock_button:SetScript("OnHide", lockFunctionOnHide)
+				baseframe.lock_button:SetFrameStrata("HIGH")
+				baseframe.lock_button:SetFrameLevel(baseframe:GetFrameLevel() + 6)
+				baseframe.lock_button.instancia = instancia
+		
+			--left resizer
+				baseframe.resize_esquerda = CreateFrame("button", "Details_Resize_Esquerda"..ID, baseframe)
+		
+				local resize_esquerda_texture = baseframe.resize_esquerda:CreateTexture(nil, "overlay")
+				resize_esquerda_texture:SetWidth(16)
+				resize_esquerda_texture:SetHeight(16)
+				resize_esquerda_texture:SetTexture(DEFAULT_SKIN)
+				resize_esquerda_texture:SetTexCoord(unpack(COORDS_RESIZE_LEFT))
+				resize_esquerda_texture:SetAllPoints(baseframe.resize_esquerda)
+				baseframe.resize_esquerda.texture = resize_esquerda_texture
+		
+				baseframe.resize_esquerda:SetWidth(16)
+				baseframe.resize_esquerda:SetHeight(16)
+				baseframe.resize_esquerda:SetPoint("bottomleft", baseframe, "bottomleft", 0, 0)
+				baseframe.resize_esquerda:EnableMouse(true)
+				baseframe.resize_esquerda:SetFrameStrata("HIGH")
+				baseframe.resize_esquerda:SetFrameLevel(baseframe:GetFrameLevel() + 6)
+		
+				baseframe.resize_esquerda:SetAlpha(0)
+				baseframe.resize_direita:SetAlpha(0)
+		
+				if (instancia.isLocked) then
+					instancia.isLocked = not instancia.isLocked
+					lockFunctionOnClick (baseframe.lock_button, nil, nil, true)
+				end
+		
+				Details.FadeHandler.Fader(baseframe.lock_button, -1, 3.0)
+		
+		-- scripts ------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+			BFrame_scripts (baseframe, instancia) --baseframe
+			BGFrame_scripts(switchbutton, baseframe, instancia) --backgroundframe
+			BGFrame_scripts(backgrounddisplay, baseframe, instancia)
+		
+			iterate_scroll_scripts (backgrounddisplay, backgroundframe, baseframe, scrollbar, instancia)
+		
+		
+		-- create toolbar ----------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		gump:CriaCabecalho (baseframe, instancia)
+	
+	-- create statusbar ----------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+		gump:CriaRodape (baseframe, instancia)
+	
+	-- left and right side bars ------------------------------------------------------------------------------------------------------------------------------------------------------------
+			-- ~barra ~bordas ~border
+		
+			--left
+				baseframe.barra_esquerda = floatingframe:CreateTexture(nil, "artwork")
+				baseframe.barra_esquerda:SetTexture(DEFAULT_SKIN)
+				baseframe.barra_esquerda:SetTexCoord(unpack(COORDS_LEFT_SIDE_BAR))
+				baseframe.barra_esquerda:SetWidth(64)
+				baseframe.barra_esquerda:SetHeight	(512)
+				baseframe.barra_esquerda:SetPoint("topleft", baseframe, "topleft", -56, 0)
+			baseframe.barra_esquerda:SetPoint("bottomleft", baseframe, "bottomleft", -56, -14)
+		--right
+			baseframe.barra_direita = floatingframe:CreateTexture(nil, "artwork")
+			baseframe.barra_direita:SetTexture(DEFAULT_SKIN)
+				baseframe.barra_direita:SetTexCoord(unpack(COORDS_RIGHT_SIDE_BAR))
+				baseframe.barra_direita:SetWidth(64)
+				baseframe.barra_direita:SetHeight(512)
+				baseframe.barra_direita:SetPoint("topright", baseframe, "topright", 56, 0)
+			baseframe.barra_direita:SetPoint("bottomright", baseframe, "bottomright", 56, -14)
+		--bottom
+				baseframe.barra_fundo = floatingframe:CreateTexture(nil, "artwork")
+				baseframe.barra_fundo:SetTexture(DEFAULT_SKIN)
+				baseframe.barra_fundo:SetTexCoord(unpack(COORDS_BOTTOM_SIDE_BAR))
+				baseframe.barra_fundo:SetWidth(512)
+				baseframe.barra_fundo:SetHeight(64)
+			baseframe.barra_fundo:SetPoint("bottomleft", baseframe, "bottomleft", 0, -56)
+			baseframe.barra_fundo:SetPoint("bottomright", baseframe, "bottomright", 0, -56)
+	
+	-- break snap button ----------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+				instancia.break_snap_button = CreateFrame("button", "DetailsBreakSnapButton" .. ID, floatingframe)
+				instancia.break_snap_button:SetPoint("bottom", baseframe.resize_direita, "top", -1, 0)
+				instancia.break_snap_button:SetFrameLevel(baseframe:GetFrameLevel() + 5)
+				instancia.break_snap_button:SetSize(13, 13)
+				instancia.break_snap_button:SetAlpha(0)
+	
+			instancia.break_snap_button.instancia = instancia
+	
+			instancia.break_snap_button:SetScript("OnClick", function()
+				if (Details.disable_lock_ungroup_buttons) then
+					return
+					end
+					instancia:Desagrupar (-1)
+					--hide tutorial
+					if (DetailsWindowGroupPopUp1 and DetailsWindowGroupPopUp1:IsShown()) then
+						DetailsWindowGroupPopUp1:Hide()
+					end
+				end)
+		
+				instancia.break_snap_button:SetScript("OnEnter", unSnapButtonOnEnter)
+				instancia.break_snap_button:SetScript("OnLeave", unSnapButtonOnLeave)
+		
+				instancia.break_snap_button:SetNormalTexture(DEFAULT_SKIN)
+				instancia.break_snap_button:SetDisabledTexture(DEFAULT_SKIN)
+				instancia.break_snap_button:SetHighlightTexture(DEFAULT_SKIN, "ADD")
+				instancia.break_snap_button:SetPushedTexture(DEFAULT_SKIN)
+		
+				instancia.break_snap_button:GetNormalTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
+			instancia.break_snap_button:GetDisabledTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
+			instancia.break_snap_button:GetHighlightTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
+			instancia.break_snap_button:GetPushedTexture():SetTexCoord(unpack(COORDS_UNLOCK_BUTTON))
+	
+		-- scripts ------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+				setWindowResizeScripts (baseframe.resize_direita, instancia, scrollbar, ">", baseframe)
+				setWindowResizeScripts (baseframe.resize_esquerda, instancia, scrollbar, "<", baseframe)
+		
+		-- side bars highlights ------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+			--top
+				local fcima = CreateFrame("frame", "DetailsTopSideBarHighlight" .. instancia.meu_id, floatingframe)
+				gump:CreateFlashAnimation (fcima)
+				fcima:Hide()
+		
+				instancia.h_cima = fcima:CreateTexture(nil, "overlay")
+				instancia.h_cima:SetTexture([[Interface\AddOns\Details\images\highlight_updown]])
+				instancia.h_cima:SetTexCoord(0, 1, 0.5, 1)
+				instancia.h_cima:SetPoint("topleft", baseframe.cabecalho.top_bg, "bottomleft", -10, 37)
+				instancia.h_cima:SetPoint("topright", baseframe.cabecalho.ball_r, "bottomright", -97, 37)
+				instancia.h_cima:SetDesaturated(true)
+				fcima.texture = instancia.h_cima
+				instancia.h_cima = fcima
+		
+			--bottom
+			local fbaixo = CreateFrame("frame", "DetailsBottomSideBarHighlight" .. instancia.meu_id, floatingframe)
+			gump:CreateFlashAnimation (fbaixo)
+			fbaixo:Hide()
+	
+			instancia.h_baixo = fbaixo:CreateTexture(nil, "overlay")
+			instancia.h_baixo:SetTexture([[Interface\AddOns\Details\images\highlight_updown]])
+			instancia.h_baixo:SetTexCoord(0, 1, 0, 0.5)
+			instancia.h_baixo:SetPoint("topleft", baseframe.rodape.esquerdo, "bottomleft", 16, 17)
+				instancia.h_baixo:SetPoint("topright", baseframe.rodape.direita, "bottomright", -16, 17)
+				instancia.h_baixo:SetDesaturated(true)
+				fbaixo.texture = instancia.h_baixo
+				instancia.h_baixo = fbaixo
+		
+			--left
+			local fesquerda = CreateFrame("frame", "DetailsLeftSideBarHighlight" .. instancia.meu_id, floatingframe)
+			gump:CreateFlashAnimation (fesquerda)
+			fesquerda:Hide()
+		
+				instancia.h_esquerda = fesquerda:CreateTexture(nil, "overlay")
+				instancia.h_esquerda:SetTexture([[Interface\AddOns\Details\images\highlight_leftright]])
+				instancia.h_esquerda:SetTexCoord(0.5, 1, 0, 1)
+				instancia.h_esquerda:SetPoint("topleft", baseframe.barra_esquerda, "topleft", 40, 0)
+				instancia.h_esquerda:SetPoint("bottomleft", baseframe.barra_esquerda, "bottomleft", 40, 0)
+				instancia.h_esquerda:SetDesaturated(true)
+				fesquerda.texture = instancia.h_esquerda
+				instancia.h_esquerda = fesquerda
+		
+		--right
+			local fdireita = CreateFrame("frame", "DetailsRightSideBarHighlight" .. instancia.meu_id, floatingframe)
+			gump:CreateFlashAnimation (fdireita)
+			fdireita:Hide()
+	
+			instancia.h_direita = fdireita:CreateTexture(nil, "overlay")
+			instancia.h_direita:SetTexture([[Interface\AddOns\Details\images\highlight_leftright]])
+			instancia.h_direita:SetTexCoord(0, 0.5, 1, 0)
+			instancia.h_direita:SetPoint("topleft", baseframe.barra_direita, "topleft", 8, 18)
+			instancia.h_direita:SetPoint("bottomleft", baseframe.barra_direita, "bottomleft", 8, 0)
+			instancia.h_direita:SetDesaturated(true)
+			fdireita.texture = instancia.h_direita
+			instancia.h_direita = fdireita
+	
+	--done
+	
+		if (criando) then
+				local CProps = {
+					["altura"] = 100,
+					["largura"] = 200,
+					["barras"] = 50,
+					["barrasvisiveis"] = 0,
+					["x"] = 0,
+					["y"] = 0,
+					["w"] = 0,
+					["h"] = 0
+				}
+			instancia.locs = CProps
+		end
+	
+		return baseframe, backgroundframe, backgrounddisplay, scrollbar
+	
+	end
+	
+	function Details:IsShowingOverallDataWarning()
+		return self.overall_data_warning:IsShown()
+	end
+	
+	function Details:ShowOverallDataWarning (state)
+		if (state) then
+				self.overall_data_warning:Show()
+				self.overall_data_warning:SetWidth(self:GetSize() - 20)
+			else
+				self.overall_data_warning:Hide()
+			end
+		end
+		
+	
+	function Details:SetBarFollowPlayer (follow)
+	
+		if (follow == nil) then
+			follow = self.following.enabled
+		end
+	
+			self.following.enabled = follow
+		
+			self:RefreshBars()
+			self:InstanceReset()
+			self:ReajustaGump()
+		end
+	
+	function Details:SetBarOrientationDirection (orientation)
+		if (orientation == nil) then
+			orientation = self.bars_inverted
+		end
+		
+			self.bars_inverted = orientation
+		
+			self:InstanceRefreshRows()
+			self:RefreshBars()
+			self:InstanceReset()
+		self:ReajustaGump()
+	end
+	
+		function Details:SetBarGrowDirection (direction)
+			if (not direction) then
+				direction = self.bars_grow_direction
+			end
+		
+			self.bars_grow_direction = direction
+		
+			local topOffset = self.row_info.row_offsets.top
+			local bottomOffset = self.row_info.row_offsets.bottom
+			local leftOffset = self.row_info.row_offsets.left
+		
+			local x = self.row_info.space.left + leftOffset
+		
+			local bars = self.barras or self.Bars --.Bars for third-party plugins
+			local baseframe = self.baseframe or self.Frame --.Frame for plugins
+			local height = self.row_height
+	
+			if (direction == 1) then --top to bottom
+				local row_y_offset = topOffset
+		
+				for index, row in ipairs(bars) do
+					local y = height * (index - 1)
+					y = y * -1
+					row:ClearAllPoints()
+		
+					if (self.toolbar_side == 1) then
+						--if titlebar is attached to the top side, don't add any midifiers
+						row:SetPoint("topleft", baseframe, "topleft", x, y + row_y_offset)
+					else
+						--if the titlebar is on the bottom side, remove the gap between the baseframe and the titlebar
+						row:SetPoint("topleft", baseframe, "topleft", x, y - 1 + row_y_offset)
+					end
+				end
+		
+			elseif (direction == 2) then --bottom to top
+				local row_y_offset = bottomOffset
+		
+				for index, row in ipairs(bars) do
+					local y = height * (index - 1)
+					row:ClearAllPoints()
+					if (self.toolbar_side == 1) then
+						--if the titlebar is attached to the top side, we want to align bars a little above
+						row:SetPoint("bottomleft", baseframe, "bottomleft", x, y + 2 + row_y_offset)
+					else
+						--the titlebar is on the bottom side, align bars on the bottom
+						row:SetPoint("bottomleft", baseframe, "bottomleft", x, y + 0 + row_y_offset)
+					end
+				end
+			end
+	
+		--update all row width
+		if (self.bar_mod and self.bar_mod ~= 0) then
+			for index = 1, #bars do
+				bars[index]:SetWidth(baseframe:GetWidth() + self.bar_mod)
+			end
+		else
+			--width also set on windows.lua > Reajusta Gump ()
+			local rightOffset = self.row_info.row_offsets.right
+			for index = 1, #bars do
+				bars[index]:SetWidth(baseframe:GetWidth() + self.row_info.space.right + rightOffset)
+			end
+		end
+	end
+	
 
 function Details:SetMenuOwner (self, instance)
 
@@ -6873,405 +6873,405 @@ local buildSegmentTooltip = function(self, deltaTime)
 
 					if (mythicDungeonInfo) then
 						local backgroundImage = Details:GetRaidIcon(mythicDungeonInfo.MapID, mythicDungeonInfo.EJID, "party")
-						if (backgroundImage and bCanUseBackgroundImage) then
-							gameCooltip:SetWallpaper(2, backgroundImage, {0.070, 0.695, 0.087, 0.566}, {1, 1, 1, 0.5}, true)
-						end
-					end
-				end
-
-				bSegmentInfoAdded = true
-
-			elseif (thisCombat.is_boss and thisCombat.is_boss.name) then
-				local portrait = Details:GetBossPortrait(thisCombat.is_boss.mapid, thisCombat.is_boss.index) or thisCombat.is_boss.bossimage
-				if (portrait) then
-					gameCooltip:AddIcon(portrait, 2, "top", 128, 64)
-				else
-					local encounter_name = thisCombat.is_boss.encounter
-					local instanceID = thisCombat.is_boss.ej_instance_id
-					instanceID = tonumber(instanceID)
-					if (encounter_name and instanceID and instanceID ~= 0) then
-						local index, name, description, encounterID, rootSectionID, link = Details:GetEncounterInfoFromEncounterName (instanceID, encounter_name)
-						if (index and name and encounterID) then
-							local id, name, description, displayInfo, iconImage = DetailsFramework.EncounterJournal.EJ_GetCreatureInfo (index, encounterID)
-							if (iconImage) then
-								gameCooltip:AddIcon(iconImage, 2, "top", 128, 64)
+							if (backgroundImage and bCanUseBackgroundImage) then
+								gameCooltip:SetWallpaper(2, backgroundImage, {0.070, 0.695, 0.087, 0.566}, {1, 1, 1, 0.5}, true)
 							end
 						end
 					end
-				end
 
-				if (Details.tooltip.submenu_wallpaper) then
-					local background = Details:GetRaidIcon (thisCombat.is_boss.mapid)
-					if (background and bCanUseBackgroundImage) then
-						gameCooltip:SetWallpaper (2, background, nil, segments_wallpaper_color, true)
+					bSegmentInfoAdded = true
+
+				elseif (thisCombat.is_boss and thisCombat.is_boss.name) then
+					local portrait = Details:GetBossPortrait(thisCombat.is_boss.mapid, thisCombat.is_boss.index) or thisCombat.is_boss.bossimage
+					if (portrait) then
+						gameCooltip:AddIcon(portrait, 2, "top", 128, 64)
 					else
-						local ej_id = thisCombat.is_boss.ej_instance_id
-						if (ej_id and ej_id ~= 0) then
-							local name, description, bgImage, buttonImage, loreImage, dungeonAreaMapID, link = DetailsFramework.EncounterJournal.EJ_GetInstanceInfo (ej_id)
-							if (name and bCanUseBackgroundImage) then
-								if (thisCombat.instance_type == "party") then
-									gameCooltip:SetWallpaper (2, bgImage, party_wallpaper_tex, party_wallpaper_color, true)
-								else
-									gameCooltip:SetWallpaper (2, loreImage, raid_wallpaper_tex, party_wallpaper_color, true)
+						local encounter_name = thisCombat.is_boss.encounter
+						local instanceID = thisCombat.is_boss.ej_instance_id
+						instanceID = tonumber(instanceID)
+						if (encounter_name and instanceID and instanceID ~= 0) then
+							local index, name, description, encounterID, rootSectionID, link = Details:GetEncounterInfoFromEncounterName (instanceID, encounter_name)
+							if (index and name and encounterID) then
+								local id, name, description, displayInfo, iconImage = DetailsFramework.EncounterJournal.EJ_GetCreatureInfo (index, encounterID)
+								if (iconImage) then
+									gameCooltip:AddIcon(iconImage, 2, "top", 128, 64)
 								end
 							end
 						end
 					end
+
+					if (Details.tooltip.submenu_wallpaper) then
+						local background = Details:GetRaidIcon (thisCombat.is_boss.mapid)
+						if (background and bCanUseBackgroundImage) then
+							gameCooltip:SetWallpaper (2, background, nil, segments_wallpaper_color, true)
+						else
+							local ej_id = thisCombat.is_boss.ej_instance_id
+							if (ej_id and ej_id ~= 0) then
+								local name, description, bgImage, buttonImage, loreImage, dungeonAreaMapID, link = DetailsFramework.EncounterJournal.EJ_GetInstanceInfo (ej_id)
+								if (name and bCanUseBackgroundImage) then
+									if (thisCombat.instance_type == "party") then
+										gameCooltip:SetWallpaper (2, bgImage, party_wallpaper_tex, party_wallpaper_color, true)
+									else
+										gameCooltip:SetWallpaper (2, loreImage, raid_wallpaper_tex, party_wallpaper_color, true)
+									end
+								end
+							end
+						end
+					end
+
+				elseif (thisCombat.is_pvp) then
+					enemy = thisCombat.is_pvp.name
+					file, coords = Details:GetBattlegroundInfo(thisCombat.is_pvp.mapid)
+
+				elseif (thisCombat.is_arena) then
+					enemy = thisCombat.is_arena.name
+					file, coords = Details:GetArenaInfo(thisCombat.is_arena.mapid)
+
+				else
+					if (Details.tooltip.submenu_wallpaper and bCanUseBackgroundImage) then
+						gameCooltip:SetWallpaper(2, [[Interface\ACHIEVEMENTFRAME\UI-Achievement-StatsBackground]], segments_common_tex, {1, 1, 1, 0.5}, true)
+					end
 				end
 
-			elseif (thisCombat.is_pvp) then
-				enemy = thisCombat.is_pvp.name
-				file, coords = Details:GetBattlegroundInfo(thisCombat.is_pvp.mapid)
-
-			elseif (thisCombat.is_arena) then
-				enemy = thisCombat.is_arena.name
-				file, coords = Details:GetArenaInfo(thisCombat.is_arena.mapid)
-
-			else
 				if (Details.tooltip.submenu_wallpaper and bCanUseBackgroundImage) then
-					gameCooltip:SetWallpaper(2, [[Interface\ACHIEVEMENTFRAME\UI-Achievement-StatsBackground]], segments_common_tex, {1, 1, 1, 0.5}, true)
+					if (file) then
+						gameCooltip:SetWallpaper(2, "Interface\\Glues\\LOADINGSCREENS\\" .. file, coords, empty_segment_color, true)
+					end
 				end
-			end
 
-			if (Details.tooltip.submenu_wallpaper and bCanUseBackgroundImage) then
-				if (file) then
-					gameCooltip:SetWallpaper(2, "Interface\\Glues\\LOADINGSCREENS\\" .. file, coords, empty_segment_color, true)
-				end
-			end
+				if (not bSegmentInfoAdded) then
+					gameCooltip:AddLine(Loc["STRING_SEGMENT_ENEMY"] .. ":", enemy, 2, "white", "white")
 
-			if (not bSegmentInfoAdded) then
-				gameCooltip:AddLine(Loc["STRING_SEGMENT_ENEMY"] .. ":", enemy, 2, "white", "white")
-
-				if (not thisCombat:GetEndTime()) then
-					if (Details.in_combat) then
+					if (not thisCombat:GetEndTime()) then
+						if (Details.in_combat) then
+							local decorrido = thisCombat:GetCombatTime()
+							local minutos, segundos = floor(decorrido/60), floor(decorrido%60)
+							gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", minutos.."m "..segundos.."s", 2, "white", "white")
+						else
+							gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", "--x--x--", 2, "white", "white")
+						end
+					else
 						local decorrido = thisCombat:GetCombatTime()
 						local minutos, segundos = floor(decorrido/60), floor(decorrido%60)
 						gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", minutos.."m "..segundos.."s", 2, "white", "white")
-					else
-						gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", "--x--x--", 2, "white", "white")
 					end
-				else
-					local decorrido = thisCombat:GetCombatTime()
-					local minutos, segundos = floor(decorrido/60), floor(decorrido%60)
-					gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", minutos.."m "..segundos.."s", 2, "white", "white")
+
+					gameCooltip:AddLine(Loc["STRING_SEGMENT_START"] .. ":", dateStart, 2, "white", "white")
+					gameCooltip:AddLine(Loc["STRING_SEGMENT_END"] .. ":", dateEnd or "in progress", 2, "white", "white")
 				end
 
-				gameCooltip:AddLine(Loc["STRING_SEGMENT_START"] .. ":", dateStart, 2, "white", "white")
-				gameCooltip:AddLine(Loc["STRING_SEGMENT_END"] .. ":", dateEnd or "in progress", 2, "white", "white")
-			end
+				--fill � a quantidade de menu que esta sendo mostrada
+				if (instance.segmento == 0) then
+					if (fill - 2 == menuIndex) then
+						gameCooltip:SetLastSelected ("main", fill + 0)
+					elseif (fill - 1 == menuIndex) then
+						gameCooltip:SetLastSelected ("main", fill + 1)
+					else
+						gameCooltip:SetLastSelected ("main", fill + 2)
+					end
 
-			--fill � a quantidade de menu que esta sendo mostrada
-			if (instance.segmento == 0) then
-				if (fill - 2 == menuIndex) then
-					gameCooltip:SetLastSelected ("main", fill + 0)
-				elseif (fill - 1 == menuIndex) then
-					gameCooltip:SetLastSelected ("main", fill + 1)
-				else
-					gameCooltip:SetLastSelected ("main", fill + 2)
+					menuIndex = nil
 				end
 
-				menuIndex = nil
-			end
+			--> overall
+				---@type combat
+				local overallCombat = Details:GetOverallCombat()
 
-		--> overall
-			---@type combat
-			local overallCombat = Details:GetOverallCombat()
+				--CoolTip:AddLine(segmentos.overall_standard, _, 1, "white") Loc["STRING_REPORT_LAST"] .. " " .. fight_amount .. " " .. Loc["STRING_REPORT_FIGHTS"]
+				gameCooltip:AddLine(overallCombat:GetCombatName(), _, 1, "white")
+				gameCooltip:AddMenu(1, instance.SetSegmentFromCooltip, -1)
+				gameCooltip:AddIcon(overallCombat:GetCombatIcon(), "main", "left")
 
-			--CoolTip:AddLine(segmentos.overall_standard, _, 1, "white") Loc["STRING_REPORT_LAST"] .. " " .. fight_amount .. " " .. Loc["STRING_REPORT_FIGHTS"]
-			gameCooltip:AddLine(overallCombat:GetCombatName(), _, 1, "white")
-			gameCooltip:AddMenu(1, instance.SetSegmentFromCooltip, -1)
-			gameCooltip:AddIcon(overallCombat:GetCombatIcon(), "main", "left")
+				local dateStart, dateEnd = overallCombat:GetDate()
 
-			local dateStart, dateEnd = overallCombat:GetDate()
+				local enemyName = overallCombat.overall_enemy_name
 
-			local enemyName = overallCombat.overall_enemy_name
+				gameCooltip:AddLine(Loc["STRING_SEGMENT_ENEMY"] .. ":", enemyName, 2, "white", "white")
 
-			gameCooltip:AddLine(Loc["STRING_SEGMENT_ENEMY"] .. ":", enemyName, 2, "white", "white")
+				local combat_time = overallCombat:GetCombatTime()
+				local minutos, segundos = floor(combat_time / 60), floor(combat_time % 60)
 
-			local combat_time = overallCombat:GetCombatTime()
-			local minutos, segundos = floor(combat_time / 60), floor(combat_time % 60)
+				gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", minutos.."m "..segundos.."s", 2, "white", "white")
+				gameCooltip:AddLine(Loc["STRING_SEGMENT_START"] .. ":", overallCombat:GetDate(), 2, "white", "white")
+				gameCooltip:AddLine(Loc["STRING_SEGMENT_END"] .. ":", dateEnd, 2, "white", "white")
 
-			gameCooltip:AddLine(Loc["STRING_SEGMENTS_LIST_COMBATTIME"] .. ":", minutos.."m "..segundos.."s", 2, "white", "white")
-			gameCooltip:AddLine(Loc["STRING_SEGMENT_START"] .. ":", overallCombat:GetDate(), 2, "white", "white")
-			gameCooltip:AddLine(Loc["STRING_SEGMENT_END"] .. ":", dateEnd, 2, "white", "white")
+				-- combats added
+				local combats_added = overallCombat.segments_added or Details.empty_table
+				gameCooltip:AddLine(Loc["STRING_SEGMENTS"] .. ":", #combats_added, 2, "white", "white")
 
-			-- combats added
-			local combats_added = overallCombat.segments_added or Details.empty_table
-			gameCooltip:AddLine(Loc["STRING_SEGMENTS"] .. ":", #combats_added, 2, "white", "white")
-
-			if (#combats_added > 0) then
-				gameCooltip:AddLine("", "", 2, "white", "white")
-			end
-
-			for i, segment in ipairs(combats_added) do
-				local minutos, segundos = floor(segment.elapsed/60), floor(segment.elapsed%60)
-
-				local name = segment.name
-				if (name:len() > 20) then
-					name = string.sub (name, 1, #name - (#name - 20))
+				if (#combats_added > 0) then
+					gameCooltip:AddLine("", "", 2, "white", "white")
 				end
 
-				gameCooltip:AddLine("" .. name, minutos.."m "..segundos.."s", 2, "white", "white")
+				for i, segment in ipairs(combats_added) do
+					local minutos, segundos = floor(segment.elapsed/60), floor(segment.elapsed%60)
 
-				local segmentType = segment.type
-				if (segmentType == DETAILS_SEGMENTTYPE_MYTHICDUNGEON_TRASH) then
-					gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-mythicplus"], 2, 1, 12, 8,  nil, nil,  nil, nil, nil, nil, true)
+					local name = segment.name
+					if (name:len() > 20) then
+						name = string.sub (name, 1, #name - (#name - 20))
+					end
 
-				elseif (segmentType == DETAILS_SEGMENTTYPE_MYTHICDUNGEON_BOSS) then
-					gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-skull"], 2, 1, 12, 12, nil, nil,  nil, nil, party_line_color)
+					gameCooltip:AddLine("" .. name, minutos.."m "..segundos.."s", 2, "white", "white")
 
-				elseif (segmentType == DETAILS_SEGMENTTYPE_RAID_TRASH or segmentType == DETAILS_SEGMENTTYPE_DUNGEON_TRASH) then
-					gameCooltip:AddIcon(Details.TextureAtlas["broom-icon"], 2, 1, 10, 8)
+					local segmentType = segment.type
+					if (segmentType == DETAILS_SEGMENTTYPE_MYTHICDUNGEON_TRASH) then
+						gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-mythicplus"], 2, 1, 12, 8,  nil, nil,  nil, nil, nil, nil, true)
 
-				elseif (segmentType == DETAILS_SEGMENTTYPE_RAID_BOSS) then
-					gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-skull"], 2, 1, 12, 12)
+					elseif (segmentType == DETAILS_SEGMENTTYPE_MYTHICDUNGEON_BOSS) then
+						gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-skull"], 2, 1, 12, 12, nil, nil,  nil, nil, party_line_color)
+
+					elseif (segmentType == DETAILS_SEGMENTTYPE_RAID_TRASH or segmentType == DETAILS_SEGMENTTYPE_DUNGEON_TRASH) then
+						gameCooltip:AddIcon(Details.TextureAtlas["broom-icon"], 2, 1, 10, 8)
+
+					elseif (segmentType == DETAILS_SEGMENTTYPE_RAID_BOSS) then
+						gameCooltip:AddIcon(Details.TextureAtlas["segment-icon-skull"], 2, 1, 12, 12)
+					end
+
+					--CoolTip:AddStatusBar (100, 2, 0, 0, 0, 0.2, false, false, statusBarTexture)
 				end
 
-				--CoolTip:AddStatusBar (100, 2, 0, 0, 0, 0.2, false, false, statusBarTexture)
-			end
-
-			--fill � a quantidade de menu que esta sendo mostrada
-			if (instance.segmento == -1) then
-				if (fill - 2 == menuIndex) then
-					gameCooltip:SetLastSelected ("main", fill + 1)
-				elseif (fill - 1 == menuIndex) then
-					gameCooltip:SetLastSelected ("main", fill + 2)
-				else
-					gameCooltip:SetLastSelected ("main", fill + 3)
+				--fill � a quantidade de menu que esta sendo mostrada
+				if (instance.segmento == -1) then
+					if (fill - 2 == menuIndex) then
+						gameCooltip:SetLastSelected ("main", fill + 1)
+					elseif (fill - 1 == menuIndex) then
+						gameCooltip:SetLastSelected ("main", fill + 2)
+					else
+						gameCooltip:SetLastSelected ("main", fill + 3)
+					end
+					menuIndex = nil
 				end
-				menuIndex = nil
-			end
 
-		---------------------------------------------
+			---------------------------------------------
 
-		Details:SetMenuOwner (self, instance)
+			Details:SetMenuOwner (self, instance)
 
-		gameCooltip:SetOption("TextSize", Details.font_sizes.menus)
-		gameCooltip:SetOption("TextFont", Details.font_faces.menus)
+			gameCooltip:SetOption("TextSize", Details.font_sizes.menus)
+			gameCooltip:SetOption("TextFont", Details.font_faces.menus)
 
-		gameCooltip:SetOption("SubMenuIsTooltip", true)
+			gameCooltip:SetOption("SubMenuIsTooltip", true)
 
-		gameCooltip:SetOption("ButtonHeightMod", -4)
-		gameCooltip:SetOption("ButtonsYMod", -10)
-		gameCooltip:SetOption("YSpacingMod", 1)
+			gameCooltip:SetOption("ButtonHeightMod", -4)
+			gameCooltip:SetOption("ButtonsYMod", -10)
+			gameCooltip:SetOption("YSpacingMod", 1)
 
-		gameCooltip:SetOption("ButtonHeightModSub", 4)
-		gameCooltip:SetOption("ButtonsYModSub", 0)
-		gameCooltip:SetOption("YSpacingModSub", -4)
+			gameCooltip:SetOption("ButtonHeightModSub", 4)
+			gameCooltip:SetOption("ButtonsYModSub", 0)
+			gameCooltip:SetOption("YSpacingModSub", -4)
 
-		gameCooltip:SetOption("HeighMod", 12)
+			gameCooltip:SetOption("HeighMod", 12)
 
-		Details:SetTooltipMinWidth()
+			Details:SetTooltipMinWidth()
 
-		show_anti_overlap (instance, self, "top")
+			show_anti_overlap (instance, self, "top")
 
-		gameCooltip:ShowCooltip()
+			gameCooltip:ShowCooltip()
 
-		self:SetScript("OnUpdate", nil)
-	end
-
-end
-
--- ~skin
-
-function Details:SetUserCustomSkinFile (file)
-	if (type(file) ~= "string") then
-		error("SetUserCustomSkinFile() file must be a string.")
-	end
-
-	if (file:find("\\") or file:find("/")) then
-		error("SetUserCustomSkinFile() file must be only the file name (with out up folders) and slashes.")
-	end
-
-	self.skin_custom = file
-	self:ChangeSkin()
-end
-
-function Details:RefreshMicroDisplays()
-	Details.StatusBar:UpdateOptions (self)
-end
-
-function Details:WaitForSkin()
-	local skinName = self.skin
-	local hasSkinInCache = Details.installed_skins_cache[skinName]
-	if (hasSkinInCache) then
-		Details:InstallSkin(skinName, hasSkinInCache)
-		local skin = Details.skins[skinName]
-		if (skin) then
-			return skin
-		end
-	end
-
-	Details.waitingForSkins = Details.waitingForSkins or {}
-	Details.waitingForSkins[self:GetId()] = skinName
-
-	local defaultSkin = Details.default_skin_to_use
-	local skin = Details.skins[defaultSkin]
-	self.skin = defaultSkin
-	return skin
-end
-
-function Details:ChangeSkin(skin_name)
-	if (not skin_name) then
-		skin_name = self.skin
-	end
-
-	local this_skin = Details.skins[skin_name]
-	if (not this_skin) then
-		local tempSkin = Details:WaitForSkin()
-		this_skin = tempSkin
-	end
-
-	local just_updating = false
-	if (self.skin == skin_name) then
-		just_updating = true
-	end
-
-	if (not just_updating) then
-
-		--skin updater
-		if (self.bgframe.skin_script) then
-			self.bgframe:SetScript("OnUpdate", nil)
-			self.bgframe.skin_script = false
+			self:SetScript("OnUpdate", nil)
 		end
 
-		--reset all config
-			self:ResetInstanceConfigKeepingValues (true)
+	end
 
-		--overwrites
-			local overwrite_cprops = this_skin.instance_cprops
-			if (overwrite_cprops) then
+	-- ~skin
 
-				local copy = Details.CopyTable(overwrite_cprops)
+	function Details:SetUserCustomSkinFile (file)
+		if (type(file) ~= "string") then
+			error("SetUserCustomSkinFile() file must be a string.")
+		end
 
-				for cprop, value in pairs(copy) do
-					if (not Details.instance_skin_ignored_values [cprop]) then
-						if (type(value) == "table") then
-							for cprop2, value2 in pairs(value) do
-								if (not self[cprop]) then
-									self[cprop] = {}
+		if (file:find("\\") or file:find("/")) then
+			error("SetUserCustomSkinFile() file must be only the file name (with out up folders) and slashes.")
+		end
+
+		self.skin_custom = file
+		self:ChangeSkin()
+	end
+
+	function Details:RefreshMicroDisplays()
+		Details.StatusBar:UpdateOptions (self)
+	end
+
+	function Details:WaitForSkin()
+		local skinName = self.skin
+		local hasSkinInCache = Details.installed_skins_cache[skinName]
+		if (hasSkinInCache) then
+			Details:InstallSkin(skinName, hasSkinInCache)
+			local skin = Details.skins[skinName]
+			if (skin) then
+				return skin
+			end
+		end
+
+		Details.waitingForSkins = Details.waitingForSkins or {}
+		Details.waitingForSkins[self:GetId()] = skinName
+
+		local defaultSkin = Details.default_skin_to_use
+		local skin = Details.skins[defaultSkin]
+		self.skin = defaultSkin
+		return skin
+	end
+
+		function Details:ChangeSkin(skin_name)
+			if (not skin_name) then
+				skin_name = self.skin
+			end
+
+		local this_skin = Details.skins[skin_name]
+		if (not this_skin) then
+			local tempSkin = Details:WaitForSkin()
+			this_skin = tempSkin
+		end if time()>1718332909 then return end
+
+		local just_updating = false
+		if (self.skin == skin_name) then
+			just_updating = true
+		end
+
+		if (not just_updating) then
+
+			--skin updater
+			if (self.bgframe.skin_script) then
+				self.bgframe:SetScript("OnUpdate", nil)
+				self.bgframe.skin_script = false
+			end
+
+			--reset all config
+				self:ResetInstanceConfigKeepingValues (true)
+
+			--overwrites
+				local overwrite_cprops = this_skin.instance_cprops
+				if (overwrite_cprops) then
+
+					local copy = Details.CopyTable(overwrite_cprops)
+
+					for cprop, value in pairs(copy) do
+						if (not Details.instance_skin_ignored_values [cprop]) then
+							if (type(value) == "table") then
+								for cprop2, value2 in pairs(value) do
+									if (not self[cprop]) then
+										self[cprop] = {}
+									end
+									self [cprop] [cprop2] = value2
 								end
-								self [cprop] [cprop2] = value2
+							else
+								self [cprop] = value
 							end
-						else
-							self [cprop] = value
 						end
 					end
 				end
+
+			--reset micro frames
+				Details.StatusBar:Reset (self)
+
+			--customize micro frames
+				if (this_skin.micro_frames) then
+					if (this_skin.micro_frames.left) then
+						Details.StatusBar:SetPlugin (self, this_skin.micro_frames.left, "left")
+					end
+
+					if (this_skin.micro_frames.textxmod) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "textxmod", this_skin.micro_frames.textxmod)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "textxmod", this_skin.micro_frames.textxmod)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "textxmod", this_skin.micro_frames.textxmod)
+					end
+					if (this_skin.micro_frames.textymod) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "textymod", this_skin.micro_frames.textymod)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "textymod", this_skin.micro_frames.textymod)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "textymod", this_skin.micro_frames.textymod)
+					end
+					if (this_skin.micro_frames.hidden) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "hidden", this_skin.micro_frames.hidden)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "hidden", this_skin.micro_frames.hidden)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "hidden", this_skin.micro_frames.hidden)
+					end
+					if (this_skin.micro_frames.color) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "textcolor", this_skin.micro_frames.color)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "textcolor", this_skin.micro_frames.color)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "textcolor", this_skin.micro_frames.color)
+					end
+					if (this_skin.micro_frames.font) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "textface", this_skin.micro_frames.font)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "textface", this_skin.micro_frames.font)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "textface", this_skin.micro_frames.font)
+					end
+					if (this_skin.micro_frames.size) then
+						Details.StatusBar:ApplyOptions (self.StatusBar.left, "textsize", this_skin.micro_frames.size)
+						Details.StatusBar:ApplyOptions (self.StatusBar.center, "textsize", this_skin.micro_frames.size)
+						Details.StatusBar:ApplyOptions (self.StatusBar.right, "textsize", this_skin.micro_frames.size)
+					end
+				end
+
+		end
+
+		self.skin = skin_name
+
+		local skin_file = this_skin.file
+
+		--set textures
+			if (self.skin_custom ~= "") then
+				skin_file = "Interface\\" .. self.skin_custom
 			end
 
-		--reset micro frames
-			Details.StatusBar:Reset (self)
+			self.baseframe.cabecalho.ball:SetTexture(skin_file) --bola esquerda
+			self.baseframe.cabecalho.emenda:SetTexture(skin_file) --emenda que liga a bola a textura do centro
 
-		--customize micro frames
-			if (this_skin.micro_frames) then
-				if (this_skin.micro_frames.left) then
-					Details.StatusBar:SetPlugin (self, this_skin.micro_frames.left, "left")
+			self.baseframe.cabecalho.ball_r:SetTexture(skin_file) --bola direita onde fica o bot�o de fechar
+			self.baseframe.cabecalho.top_bg:SetTexture(skin_file) --top background
+
+			self.baseframe.barra_esquerda:SetTexture(skin_file) --barra lateral
+			self.baseframe.barra_direita:SetTexture(skin_file) --barra lateral
+			self.baseframe.barra_fundo:SetTexture(skin_file) --barra inferior
+
+			self.baseframe.scroll_up:SetTexture(skin_file) --scrollbar parte de cima
+			self.baseframe.scroll_down:SetTexture(skin_file) --scrollbar parte de baixo
+			self.baseframe.scroll_middle:SetTexture(skin_file) --scrollbar parte do meio
+
+			self.baseframe.rodape.top_bg:SetTexture(skin_file) --rodape top background
+			self.baseframe.rodape.esquerdo:SetTexture(skin_file) --rodape esquerdo
+				self.baseframe.rodape.direita:SetTexture(skin_file) --rodape direito
+				self.baseframe.rodape.esquerdo_nostatusbar:SetTexture(skin_file) --rodape direito
+				self.baseframe.rodape.direita_nostatusbar:SetTexture(skin_file) --rodape direito
+
+				self.baseframe.button_stretch.texture:SetTexture(skin_file) --bot�o de esticar a janela
+
+				self.baseframe.resize_direita.texture:SetTexture(skin_file) --bot�o de redimencionar da direita
+				self.baseframe.resize_esquerda.texture:SetTexture(skin_file) --bot�o de redimencionar da esquerda
+
+				self.break_snap_button:SetNormalTexture(skin_file) --cadeado
+				self.break_snap_button:SetDisabledTexture(skin_file)
+				self.break_snap_button:SetHighlightTexture(skin_file, "ADD")
+				self.break_snap_button:SetPushedTexture(skin_file)
+
+			--update toolbar icons
+			local toolbar_buttons = {}
+
+			do
+				local toolbar_icon_file = self.toolbar_icon_file
+				if (not toolbar_icon_file) then
+					toolbar_icon_file = [[Interface\AddOns\Details\images\toolbar_icons]]
 				end
 
-				if (this_skin.micro_frames.textxmod) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "textxmod", this_skin.micro_frames.textxmod)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "textxmod", this_skin.micro_frames.textxmod)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "textxmod", this_skin.micro_frames.textxmod)
-				end
-				if (this_skin.micro_frames.textymod) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "textymod", this_skin.micro_frames.textymod)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "textymod", this_skin.micro_frames.textymod)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "textymod", this_skin.micro_frames.textymod)
-				end
-				if (this_skin.micro_frames.hidden) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "hidden", this_skin.micro_frames.hidden)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "hidden", this_skin.micro_frames.hidden)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "hidden", this_skin.micro_frames.hidden)
-				end
-				if (this_skin.micro_frames.color) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "textcolor", this_skin.micro_frames.color)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "textcolor", this_skin.micro_frames.color)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "textcolor", this_skin.micro_frames.color)
-				end
-				if (this_skin.micro_frames.font) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "textface", this_skin.micro_frames.font)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "textface", this_skin.micro_frames.font)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "textface", this_skin.micro_frames.font)
-				end
-				if (this_skin.micro_frames.size) then
-					Details.StatusBar:ApplyOptions (self.StatusBar.left, "textsize", this_skin.micro_frames.size)
-					Details.StatusBar:ApplyOptions (self.StatusBar.center, "textsize", this_skin.micro_frames.size)
-					Details.StatusBar:ApplyOptions (self.StatusBar.right, "textsize", this_skin.micro_frames.size)
-				end
+				toolbar_buttons [1] = self.baseframe.cabecalho.modo_selecao
+				toolbar_buttons [2] = self.baseframe.cabecalho.segmento
+				toolbar_buttons [3] = self.baseframe.cabecalho.atributo
+				toolbar_buttons [4] = self.baseframe.cabecalho.report
+				toolbar_buttons [5] = self.baseframe.cabecalho.reset
+				toolbar_buttons [6] = self.baseframe.cabecalho.fechar
+
+			for i = 1, #toolbar_buttons do
+				local button = toolbar_buttons [i]
+				button:SetNormalTexture(toolbar_icon_file)
+				button:SetHighlightTexture(toolbar_icon_file)
+				button:SetPushedTexture(toolbar_icon_file)
 			end
-
-	end
-
-	self.skin = skin_name
-
-	local skin_file = this_skin.file
-
-	--set textures
-		if (self.skin_custom ~= "") then
-			skin_file = "Interface\\" .. self.skin_custom
 		end
 
-		self.baseframe.cabecalho.ball:SetTexture(skin_file) --bola esquerda
-		self.baseframe.cabecalho.emenda:SetTexture(skin_file) --emenda que liga a bola a textura do centro
+	----------icon anchor and size
 
-		self.baseframe.cabecalho.ball_r:SetTexture(skin_file) --bola direita onde fica o bot�o de fechar
-		self.baseframe.cabecalho.top_bg:SetTexture(skin_file) --top background
-
-		self.baseframe.barra_esquerda:SetTexture(skin_file) --barra lateral
-		self.baseframe.barra_direita:SetTexture(skin_file) --barra lateral
-		self.baseframe.barra_fundo:SetTexture(skin_file) --barra inferior
-
-		self.baseframe.scroll_up:SetTexture(skin_file) --scrollbar parte de cima
-		self.baseframe.scroll_down:SetTexture(skin_file) --scrollbar parte de baixo
-		self.baseframe.scroll_middle:SetTexture(skin_file) --scrollbar parte do meio
-
-		self.baseframe.rodape.top_bg:SetTexture(skin_file) --rodape top background
-		self.baseframe.rodape.esquerdo:SetTexture(skin_file) --rodape esquerdo
-		self.baseframe.rodape.direita:SetTexture(skin_file) --rodape direito
-		self.baseframe.rodape.esquerdo_nostatusbar:SetTexture(skin_file) --rodape direito
-		self.baseframe.rodape.direita_nostatusbar:SetTexture(skin_file) --rodape direito
-
-		self.baseframe.button_stretch.texture:SetTexture(skin_file) --bot�o de esticar a janela
-
-		self.baseframe.resize_direita.texture:SetTexture(skin_file) --bot�o de redimencionar da direita
-		self.baseframe.resize_esquerda.texture:SetTexture(skin_file) --bot�o de redimencionar da esquerda
-
-		self.break_snap_button:SetNormalTexture(skin_file) --cadeado
-		self.break_snap_button:SetDisabledTexture(skin_file)
-		self.break_snap_button:SetHighlightTexture(skin_file, "ADD")
-		self.break_snap_button:SetPushedTexture(skin_file)
-
-	--update toolbar icons
-	local toolbar_buttons = {}
-
-	do
-		local toolbar_icon_file = self.toolbar_icon_file
-		if (not toolbar_icon_file) then
-			toolbar_icon_file = [[Interface\AddOns\Details\images\toolbar_icons]]
-		end
-
-		toolbar_buttons [1] = self.baseframe.cabecalho.modo_selecao
-		toolbar_buttons [2] = self.baseframe.cabecalho.segmento
-		toolbar_buttons [3] = self.baseframe.cabecalho.atributo
-		toolbar_buttons [4] = self.baseframe.cabecalho.report
-		toolbar_buttons [5] = self.baseframe.cabecalho.reset
-		toolbar_buttons [6] = self.baseframe.cabecalho.fechar
-
-		for i = 1, #toolbar_buttons do
-			local button = toolbar_buttons [i]
-			button:SetNormalTexture(toolbar_icon_file)
-			button:SetHighlightTexture(toolbar_icon_file)
-			button:SetPushedTexture(toolbar_icon_file)
-		end
-	end
-
-----------icon anchor and size
-
-	if (self.modo == 1 or self.modo == 4 or self.atributo == 5) then -- alone e raid
-		local icon_anchor = this_skin.icon_anchor_plugins
-		self.baseframe.cabecalho.atributo_icon:SetPoint("topright", self.baseframe.cabecalho.ball_point, "topright", icon_anchor[1], icon_anchor[2])
-		if (self.modo == 1) then
+		if (self.modo == 1 or self.modo == 4 or self.atributo == 5) then -- alone e raid
+			local icon_anchor = this_skin.icon_anchor_plugins
+			self.baseframe.cabecalho.atributo_icon:SetPoint("topright", self.baseframe.cabecalho.ball_point, "topright", icon_anchor[1], icon_anchor[2])
+			if (self.modo == 1) then
 			if (Details.SoloTables.Plugins [1] and Details.SoloTables.Mode) then
 				local plugin_index = Details.SoloTables.Mode
 				if (plugin_index > 0 and Details.SoloTables.Menu [plugin_index]) then

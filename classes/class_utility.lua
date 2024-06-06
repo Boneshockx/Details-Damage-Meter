@@ -1,4 +1,51 @@
 
+if not UnitAura then
+    UnitAura = function(unitToken, index, filter)
+        local auraData = C_UnitAuras.GetAuraDataByIndex(unitToken, index, filter)
+        if not auraData then
+            return nil
+        end
+
+        return AuraUtil.UnpackAuraData(auraData)
+    end
+end
+
+if not UnitBuff then
+    UnitBuff = function(unitToken, index, filter)
+        local auraData = C_UnitAuras.GetBuffDataByIndex(unitToken, index, filter)
+        if not auraData then
+            return nil
+        end
+
+        return AuraUtil.UnpackAuraData(auraData)
+    end
+end
+
+if not UnitDebuff then
+    UnitDebuff = function(unitToken, index, filter)
+        local auraData = C_UnitAuras.GetDebuffDataByIndex(unitToken, index, filter)
+        if not auraData then
+            return nil
+        end
+
+        return AuraUtil.UnpackAuraData(auraData)
+    end
+end
+
+if not UnitAuraBySlot then
+    UnitAuraBySlot = function(unitToken, index)
+        local auraData = C_UnitAuras.GetAuraDataBySlot(unitToken, index)
+        if not auraData then
+            return nil
+        end
+
+        return AuraUtil.UnpackAuraData(auraData)
+    end
+end
+
+if not UnitAuraSlots then
+    UnitAuraSlots = C_UnitAuras.GetAuraSlots
+end
 --lua locals
 local _cstr = string.format
 local _math_floor = math.floor

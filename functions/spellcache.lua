@@ -78,7 +78,9 @@ do
 					if (bIsClassicWow) then
 						spellInfo = {GetSpellInfoClassic(key)}
 					else
-						spellInfo = {GetSpellInfo(key)}
+						local t=C_Spell.GetSpellInfo(key); 
+						if(not t)then spellInfo = {"",0,""} else 
+						spellInfo = {t.name,0,t.iconID,t.castTime,t.maxRange, t.spellID,t.originalIconID}; end 
 					end
 
 					spellCache[key] = spellInfo

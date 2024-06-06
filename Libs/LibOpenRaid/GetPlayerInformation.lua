@@ -1,4 +1,4 @@
---[=[
+local GetDetailedItemLevelInfo = C_Item.GetDetailedItemLevelInfo--[=[
     This file has the functions to get player information
     Dumping them here, make the code of the main file smaller
 --]=]

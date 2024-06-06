@@ -29,8 +29,7 @@ function Details:CreateProfile(profileName)
 	end
 
 	--copy the default table
-	local newProfile = Details.CopyTable(Details.default_profile)
-	newProfile.instances = {}
+	local newProfile = Details.CopyTable(Details.default_profile)	newProfile.instances = {}
 
 	--add to global container
 	_detalhes_global.__profiles[profileName] = newProfile
@@ -1454,7 +1453,7 @@ local default_global_data = {
 		bar_texture = "Skyline",
 	},
 
-	frame_background_color = {0.1215, 0.1176, 0.1294, 0.8},
+	frame_background_color = {0, 0, 0, 1},
 
 --/run Details.breakdown_spell_tab.spellcontainer_height = 311 --352
 	--breakdown spell tab

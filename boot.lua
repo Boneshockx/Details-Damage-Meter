@@ -3,6 +3,11 @@
 --local _StartDebugTime = debugprofilestop() print(debugprofilestop() - _StartDebugTime)
 --test if the packager will deploy to wago
 --https://github.com/LuaLS/lua-language-server/wiki/Annotations#documenting-types
+GetSpellInfo2=GetSpellInfo
+GetSpellInfo = GetSpellInfo or function(...)local t=C_Spell.GetSpellInfo(...); 
+	if (t)then return t.name, nil,t.iconID,t.castTime,t.maxRange, t.spellID,t.originalIconID else 
+		return Details.getspellinfo(...)
+	end end
 
 		_ = nil
 		_G.Details = LibStub("AceAddon-3.0"):NewAddon("_detalhes", "AceTimer-3.0", "AceComm-3.0", "AceSerializer-3.0", "NickTag-1.0")
@@ -18,8 +23,8 @@
 		local addonName, Details222 = ...
 		local version, build, date, tocversion = GetBuildInfo()
 
-		Details.build_counter = 12755
-		Details.alpha_build_counter = 12755 --if this is higher than the regular counter, use it instead
+		Details.build_counter = 12650
+		Details.alpha_build_counter = 12650 --if this is higher than the regular counter, use it instead
 		Details.dont_open_news = true
 		Details.game_version = version
 		Details.userversion = version .. " " .. Details.build_counter

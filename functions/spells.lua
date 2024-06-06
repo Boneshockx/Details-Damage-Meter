@@ -5,7 +5,7 @@ do
 
 	--import potion list from the framework
 	_detalhes.PotionList = {}
-	for spellID, _ in pairs(DetailsFramework.PotionIDs) do
+	for spellID, _ in pairs(DetailsFramework.PotionIDs or{}) do
 		_detalhes.PotionList [spellID] = true
 	end
 
